@@ -1,26 +1,7 @@
-# Mis Finanzas — versión actualizada
-
-Incluye:
-- Septiembre de 2026 ya rellenado con los movimientos de las capturas.
-- Todos esos movimientos están marcados como recurrentes.
-- Los recurrentes se generan automáticamente el día 1 de cada mes.
-- Los 37 conceptos solicitados aparecen en una pestaña desplegable de Concepto y hay un botón «＋ Añadir» para crear nuevos conceptos en el futuro.
-- Categorías: Hipoteca, Comunidad, Suministros, Seguros, Teléfono, Suscripciones, Financiación, Guardería, Matronatación, Ahorros, Transporte, Supermercado, Ocio, Gimnasio, Nóminas y Ayuda maternidad.
-- Se pueden añadir conceptos y categorías nuevas.
-- PWA instalable en iPhone.
-- Los datos se guardan en el navegador con localStorage.
-
-## GitHub Pages
-1. Sube todos los archivos del ZIP al repositorio.
-2. En Settings → Pages selecciona Deploy from a branch.
-3. Elige `main` y `/ (root)`.
-4. Guarda y abre la URL de GitHub Pages.
-5. En iPhone puedes añadirla a la pantalla de inicio.
-
-Importante: los datos se guardan en el dispositivo/navegador donde uses la aplicación. Si borras los datos del sitio, se perderán los movimientos guardados.
-
-
-## Conceptos
-El selector de Concepto contiene exactamente los 37 conceptos solicitados y al final incluye:
-"＋ Añadir nuevo concepto…"
-Al seleccionarlo puedes escribir un concepto nuevo y quedará guardado para futuros movimientos.
+MIS FINANZAS — ACTUALIZACIÓN
+1. Sustituye el index.html de tu repositorio por el de este paquete.
+2. Mantén tus iconos PNG actuales y manifest.json si ya funcionan.
+3. Haz Commit changes.
+4. Espera a que GitHub Pages publique los cambios.
+5. La URL no cambia: https://bberaldo98-stack.github.io/CONTROL-GASTOS/
+La aplicación conserva los datos existentes de localStorage en el mismo dominio.
