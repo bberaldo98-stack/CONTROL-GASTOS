@@ -4,7 +4,7 @@ Incluye:
 - Septiembre de 2026 ya rellenado con los movimientos de las capturas.
 - Todos esos movimientos están marcados como recurrentes.
 - Los recurrentes se generan automáticamente el día 1 de cada mes.
-- Conceptos completos de tus capturas.
+- Los 37 conceptos solicitados aparecen en una pestaña desplegable de Concepto y hay un botón «＋ Añadir» para crear nuevos conceptos en el futuro.
 - Categorías: Hipoteca, Comunidad, Suministros, Seguros, Teléfono, Suscripciones, Financiación, Guardería, Matronatación, Ahorros, Transporte, Supermercado, Ocio, Gimnasio, Nóminas y Ayuda maternidad.
 - Se pueden añadir conceptos y categorías nuevas.
 - PWA instalable en iPhone.
@@ -18,3 +18,9 @@ Incluye:
 5. En iPhone puedes añadirla a la pantalla de inicio.
 
 Importante: los datos se guardan en el dispositivo/navegador donde uses la aplicación. Si borras los datos del sitio, se perderán los movimientos guardados.
+
+
+## Conceptos
+El selector de Concepto contiene exactamente los 37 conceptos solicitados y al final incluye:
+"＋ Añadir nuevo concepto…"
+Al seleccionarlo puedes escribir un concepto nuevo y quedará guardado para futuros movimientos.

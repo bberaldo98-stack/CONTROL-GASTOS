@@ -62,8 +62,7 @@ h2{font-size:26px;margin:0 0 18px}.donut-wrap{display:flex;justify-content:cente
 <section class="panel" id="addPanel">
   <h2>Añadir movimiento</h2>
   <form id="movementForm" class="form">
-    <input class="wide" id="concept" list="conceptList" placeholder="Concepto" required>
-    <datalist id="conceptList"></datalist>
+    <select class="wide" id="concept" required><option value="">Selecciona concepto…</option></select>
     <select id="category" required></select>
     <select id="type"><option value="expense">Gasto</option><option value="income">Ingreso</option></select>
     <input id="amount" type="number" step="0.01" min="0" placeholder="Importe" required>
@@ -90,7 +89,7 @@ h2{font-size:26px;margin:0 0 18px}.donut-wrap{display:flex;justify-content:cente
 
 <script>
 const CATEGORIES = ["Hipoteca","Comunidad","Suministros","Seguros","Teléfono","Suscripciones","Financiación","Guardería","Matronatación","Ahorros","Transporte","Supermercado","Ocio","Gimnasio","Nóminas","Ayuda maternidad"];
-const CONCEPTS = ["Nómina Breno","Nómina María","Ayuda maternidad","Hipoteca","Comunidad","Agua","Luz","Gas","Seguro hogar","Seguro vida Breno","Seguro vida María","Seguro salud","Seguro coche","Seguro decesos","Movistar","Piscina Luca","Spotify","Netflix","iCloud","Insparya","Guardería","Claude + Chat GPT","Ahorros Breno","Ahorros María","Abono transporte Breno","Supermercado","Gasolina","Salidas / Ocio","Primor","Gastos varios","Gimnasio","Coche","Aparcamiento Trabajo Maria","Alarma","iPhone Breno","Ahorros Luca","Peluquería Breno y Luca","Imprevistos"];
+const CONCEPTS = ["Nómina Breno","Nómina María","Ayuda maternidad","Hipoteca","Comunidad","Agua","Luz","Gas","Seguro hogar","Seguro vida Breno","Seguro vida María","Seguro salud","Seguro coche","Seguro decesos","Movistar","Piscina Luca","Spotify","Netflix","iCloud","Insparya","Guardería","Claude + Chat GPT","Ahorros Breno","Ahorros María","Abono transporte Breno","Supermercado","Gasolina","Salidas / Ocio","Primor","Gimnasio","Coche","Aparcamiento Trabajo María","Alarma","iPhone Breno","Ahorros Luca","Peluquería Breno y Luca","Imprevistos"];
 
 const SEED = [
 ["Peluquería Breno y Luca","Ocio",-55],["Ahorros Luca","Ahorros",-50],["iPhone Breno","Financiación",-20.99],["Alarma","Suministros",-51.64],["Aparcamiento Trabajo Maria","Transporte",-23],["Coche","Financiación",-266.53],["Gimnasio","Gimnasio",-77.90],["Primor","Suscripciones",-11.99],["Salidas / Ocio","Ocio",-200],["Gasolina","Transporte",-140],["Supermercado","Supermercado",-600],["Abono transporte Breno","Transporte",-33],["Ahorros María","Ahorros",-150],["Ahorros Breno","Ahorros",-150],["Guardería","Guardería",-460],["Claude + Chat GPT","Suscripciones",-29.99],["Insparya","Financiación",-127.08],["iCloud","Suscripciones",-3.99],["Netflix","Suscripciones",-8.99],["Spotify","Suscripciones",-20.99],["Piscina Luca","Matronatación",-40],["Movistar","Teléfono",-50],["Seguro decesos","Seguros",-10.15],["Seguro salud","Seguros",-238.98],["Seguro vida María","Seguros",-10.92],["Seguro vida Breno","Seguros",-10.94],["Gas","Suministros",-50],["Luz","Suministros",-60],["Agua","Suministros",-30],["Comunidad","Comunidad",-109],["Hipoteca","Hipoteca",-708.25],["Ayuda maternidad","Ayuda maternidad",100],["Nómina Breno","Nóminas",1900],["Nómina María","Nóminas",2148.61]
@@ -166,10 +165,24 @@ function renderHistory(){
 function renderBudgets(ms){document.getElementById("budgetList").innerHTML=state.categories.map(c=>state.budgets[c]?`<div class="movement"><b>${esc(c)}</b><span style="float:right">${fmt((ms.filter(m=>m.category===c&&m.amount<0).reduce((a,m)=>a-m.amount,0)))} / ${fmt(state.budgets[c])}</span></div>`:"").join("")||'<div class="empty">No hay presupuestos configurados.</div>'}
 function renderLists(){
   const cat=document.getElementById("category");cat.innerHTML=state.categories.map(c=>`<option>${esc(c)}</option>`).join("");
-  document.getElementById("conceptList").innerHTML=state.concepts.map(c=>`<option value="${esc(c)}"></option>`).join("");
+  const conceptSelect=document.getElementById("concept");
+  conceptSelect.innerHTML='<option value="">Selecciona concepto…</option>'+state.concepts.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")+'<option value="__ADD__">＋ Añadir nuevo concepto…</option>';
   document.getElementById("categorySettings").innerHTML=state.categories.map(c=>`<div class="small">• ${esc(c)}</div>`).join("");
   document.getElementById("conceptSettings").innerHTML=state.concepts.map(c=>`<div class="small">• ${esc(c)}</div>`).join("");
 }
+document.getElementById("concept").addEventListener("change",e=>{
+  if(e.target.value==="__ADD__"){
+    const nuevo=prompt("Escribe el nuevo concepto:");
+    if(nuevo && nuevo.trim()){
+      const v=nuevo.trim();
+      if(!state.concepts.some(x=>x.toLowerCase()===v.toLowerCase())) state.concepts.push(v);
+      save(); render();
+      document.getElementById("concept").value=v;
+    } else {
+      e.target.value="";
+    }
+  }
+});
 document.getElementById("movementForm").addEventListener("submit",e=>{
   e.preventDefault();
   const concept=document.getElementById("concept").value.trim(), category=document.getElementById("category").value, type=document.getElementById("type").value, amount=Math.abs(Number(document.getElementById("amount").value)),date=document.getElementById("date").value,recurring=document.getElementById("recurring").value==="yes";
@@ -183,6 +196,21 @@ document.getElementById("settingsBtn").onclick=()=>document.getElementById("sett
 document.getElementById("themeBtn").onclick=()=>{document.body.classList.toggle("light");document.getElementById("themeBtn").textContent=document.body.classList.contains("light")?"🌙":"☀️"};
 document.getElementById("addCategory").onclick=()=>{let v=document.getElementById("newCategory").value.trim();if(v&&!state.categories.includes(v)){state.categories.push(v);save();render()}};
 document.getElementById("addConcept").onclick=()=>{let v=document.getElementById("newConcept").value.trim();if(v&&!state.concepts.includes(v)){state.concepts.push(v);save();render()}};
+document.getElementById("addConceptQuick").onclick=()=>{
+  const v=prompt("Escribe el nuevo concepto:");
+  if(v && v.trim()){
+    const concept=v.trim();
+    if(!state.concepts.some(x=>x.toLowerCase()===concept.toLowerCase())) state.concepts.push(concept);
+    save(); render();
+    document.getElementById("concept").value=concept;
+  }
+};
+document.getElementById("concept").addEventListener("change",e=>{
+  if(e.target.value==="__new__"){
+    document.getElementById("addConceptQuick").click();
+    e.target.value="";
+  }
+});
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.getElementById("monthView").classList.toggle("hidden",b.dataset.tab!=="month");document.getElementById("historyView").classList.toggle("hidden",b.dataset.tab!=="history")});
 document.getElementById("date").value=currentMonth+"-01";
 render();
