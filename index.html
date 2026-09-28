@@ -126,11 +126,60 @@ const DEFAULT_SEPTEMBER=[
 ["Nómina María",2148.61,"Nóminas","2026-09-01","income"]
 ];
 
-let customConcepts=JSON.parse(localStorage.getItem("mf_custom_concepts")||"[]");
-let customCategories=JSON.parse(localStorage.getItem("mf_custom_categories")||"[]");
-let txs=JSON.parse(localStorage.getItem("mf_txs")||"[]");
-let budgets=JSON.parse(localStorage.getItem("mf_budgets")||"{}");
-let recurringTemplates=JSON.parse(localStorage.getItem("mf_recurring")||"[]");
+function readJSON(key,fallback){
+  try{const v=localStorage.getItem(key);return v?JSON.parse(v):fallback}catch(e){return fallback}
+}
+let customConcepts=readJSON("mf_custom_concepts",[]);
+let customCategories=readJSON("mf_custom_categories",[]);
+let txs=readJSON("mf_txs",[]);
+let budgets=readJSON("mf_budgets",{});
+let recurringTemplates=readJSON("mf_recurring",[]);
+
+// Migración de datos de versiones anteriores.
+// La versión anterior de la app guardaba todo bajo "misFinanzasV3".
+// Al actualizar la web no se borra nada: se incorporan esos movimientos a la nueva estructura.
+function migrateLegacyData(){
+  const legacy=readJSON("misFinanzasV3",null);
+  if(!legacy || !Array.isArray(legacy.movements)) return;
+
+  const conceptAlias={"Aparcamiento Trabajo Maria":"Aparcamiento Trabajo María"};
+  const signature=t=>`${t.concept}|${t.amount}|${t.category}|${t.type}|${t.date}`;
+  const seen=new Set(txs.map(signature));
+  let changed=false;
+
+  legacy.movements.forEach(m=>{
+    const rawAmount=Number(m.amount)||0;
+    const concept=conceptAlias[m.concept]||m.concept;
+    const type=rawAmount>=0?"income":"expense";
+    const tx={
+      id:m.id||Date.now()+Math.random(),
+      type,
+      amount:Math.abs(rawAmount),
+      concept,
+      category:m.category||"Imprevistos",
+      date:m.date||localDate(),
+      recurring:!!m.recurring
+    };
+    const sig=signature(tx);
+    if(!seen.has(sig)){txs.push(tx);seen.add(sig);changed=true}
+  });
+
+  if(legacy.concepts?.length){
+    legacy.concepts.forEach(c=>{if(!CONCEPTS.includes(c)&&!customConcepts.includes(c)){customConcepts.push(c);changed=true}})
+  }
+  if(legacy.categories?.length){
+    legacy.categories.forEach(c=>{if(!CATEGORIES.includes(c)&&!customCategories.includes(c)){customCategories.push(c);changed=true}})
+  }
+  if(legacy.budgets && typeof legacy.budgets==="object") budgets={...legacy.budgets,...budgets};
+
+  if(changed){
+    localStorage.setItem("mf_txs",JSON.stringify(txs));
+    localStorage.setItem("mf_custom_concepts",JSON.stringify(customConcepts));
+    localStorage.setItem("mf_custom_categories",JSON.stringify(customCategories));
+    localStorage.setItem("mf_budgets",JSON.stringify(budgets));
+  }
+  localStorage.setItem("mf_legacy_migrated_v3","1");
+}
 
 const euro=n=>new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR"}).format(n);
 const localDate=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
@@ -235,6 +284,7 @@ function openSettings(){settingsList.innerHTML=allCategories().map(c=>`<label>${
 function closeSettings(){settings.classList.remove("open")}
 function saveBudgets(){document.querySelectorAll(".bud").forEach(i=>budgets[i.dataset.cat]=parseFloat(i.value)||0);localStorage.setItem("mf_budgets",JSON.stringify(budgets));closeSettings();render()}
 
+migrateLegacyData();
 seedSeptember();
 migrateRecurringDates();
 ensureRecurringForMonth();

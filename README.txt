@@ -1,7 +1,9 @@
-MIS FINANZAS — ACTUALIZACIÓN
-1. Sustituye el index.html de tu repositorio por el de este paquete.
-2. Mantén tus iconos PNG actuales y manifest.json si ya funcionan.
-3. Haz Commit changes.
-4. Espera a que GitHub Pages publique los cambios.
-5. La URL no cambia: https://bberaldo98-stack.github.io/CONTROL-GASTOS/
-La aplicación conserva los datos existentes de localStorage en el mismo dominio.
+MIS FINANZAS — GitHub Pages
+
+Sube estos archivos a tu repositorio de GitHub Pages.
+
+IMPORTANTE: los movimientos, conceptos personalizados, presupuestos y tema se guardan en el navegador mediante localStorage. Al sustituir index.html en el mismo dominio NO se borran los datos.
+
+Además, esta versión migra automáticamente los datos de la versión anterior que usaba la clave "misFinanzasV3", para conservar los movimientos que ya habías introducido.
+
+Incluye iconos para instalarla como app en iPhone y service worker.
