@@ -63,10 +63,10 @@ body.dark .bar{background:#30384d}
 
 <script>
 
-const CATS=["Restaurantes","Alimentación","Vivienda","Coche","Transporte","Compras","Ropa","Ocio","Viajes","Hijo","Salud","Suscripciones","Hogar","Tecnología","Deporte","Educación","Otros"];
+const DEFAULT_CATS=['Nómina Breno','Nómina María','Ayuda maternidad','Hipoteca','Comunidad','Agua','Luz','Gas','Seguro hogar','Seguro vida Breno','Seguro vida María','Seguro salud','Seguro coche','Seguro decesos','Movistar','Piscina Luca','Spotify','Netflix','iCloud','Insparya','Guardería','Claude + Chat GPT','Ahorros Breno','Ahorros María','Abono transporte Breno','Supermercado','Gasolina','Salidas / Ocio','Primor','Gimnasio','Coche','Aparcamiento Trabajo María','Alarma','iPhone Breno','Ahorros Luca','Peluquería Breno y Luca','Imprevistos'];
+let CATS=[...DEFAULT_CATS,...JSON.parse(localStorage.getItem("mf_custom_cats")||"[]")];
 const cats=CATS;
 const INCOME_TYPES=["Nómina Breno","Nómina María","Ayuda maternidad","Otros ingresos"];
-const CONCEPTS=["Nómina Breno","Nómina María","Ayuda maternidad","Hipoteca","Comunidad","Agua","Luz","Gas","Seguro hogar","Seguro vida Breno","Seguro vida María","Seguro salud","Seguro coche","Seguro decesos","Movistar","Piscina Luca","Spotify","Netflix","iCloud","Insparya","Guardería","Claude + Chat GPT","Ahorros Breno","Ahorros María","Abono transporte Breno","Supermercado","Gasolina","Salidas / Ocio","Primor","Gimnasio","Coche","Aparcamiento Trabajo María","Alarma","iPhone Breno","Ahorros Luca","Peluquería Breno y Luca","Imprevistos"];
 const colors=["#111827","#475467","#667085","#98a2b3","#d0d5dd","#e4e7ec"];
 let txs=JSON.parse(localStorage.getItem("mf_txs")||"[]");
 let budgets=JSON.parse(localStorage.getItem("mf_budgets")||"{}");
@@ -74,7 +74,7 @@ const euro=n=>new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR"}).f
 const localDate=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
 const currentYM=()=>localDate().slice(0,7);
 document.getElementById("month").textContent=new Date().toLocaleDateString("es-ES",{month:"long",year:"numeric"});
-document.getElementById("category").innerHTML=cats.map(x=>`<option>${x}</option>`).join("");
+updateCategories();
 updateConcepts();
 document.getElementById("date").value=localDate();
 applyTheme();
@@ -91,13 +91,28 @@ function toggleDark(){
  applyTheme();
 }
 function updateCategories(){
- const list=type.value==="income"?INCOME_TYPES:cats;
- category.innerHTML=list.map(x=>`<option>${x}</option>`).join("");
+ const list=type.value==="income"?CATS:CATS;
+ category.innerHTML=list.map(x=>`<option>${x}</option>`).join("")+`<option value="__ADD__">➕ Más — Añadir categoría</option>`;
+}</option>`).join("");
  updateConcepts();
 }
 function updateConcepts(){
  const list=type.value==="income"?INCOME_TYPES:CONCEPTS.filter(x=>!INCOME_TYPES.includes(x));
  concept.innerHTML=list.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("");
+}
+function addCustomCategory(){
+ const name=prompt("Escribe el nombre de la nueva categoría:");
+ if(!name) { updateCategories(); return; }
+ const clean=name.trim();
+ if(!clean) { updateCategories(); return; }
+ const custom=JSON.parse(localStorage.getItem("mf_custom_cats")||"[]");
+ if(!custom.includes(clean) && !DEFAULT_CATS.includes(clean)){
+   custom.push(clean);
+   localStorage.setItem("mf_custom_cats",JSON.stringify(custom));
+   CATS=[...DEFAULT_CATS,...custom];
+ }
+ updateCategories();
+ category.value=clean;
 }
 function render(){
  const m=currentYM(), mt=txs.filter(t=>t.date.slice(0,7)===m);
