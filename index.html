@@ -51,9 +51,9 @@ body.dark .bar{background:#30384d}
 <button class="fab" onclick="openModal()">＋ Añadir movimiento</button>
 
 <div class="modal" id="modal"><div class="sheet"><div class="row"><h2 style="margin:0">Añadir movimiento</h2><button onclick="closeModal()" style="border:0;background:none;font-size:24px">×</button></div>
-<label>Tipo</label><select id="type"><option value="expense">Gasto</option><option value="income">Ingreso</option></select>
+<label>Tipo</label><select id="type" onchange="updateCategories()"><option value="expense">Gasto</option><option value="income">Ingreso</option></select>
 <label>Importe (€)</label><input id="amount" type="number" inputmode="decimal" step=".01" placeholder="52">
-<label>Concepto</label><input id="concept" placeholder="Restaurante">
+<label>Concepto</label><input id="concept" list="conceptList" placeholder="Escribe o selecciona un concepto"><datalist id="conceptList"></datalist>
 <label>Categoría</label><select id="category"></select>
 <label>Fecha</label><input id="date" type="date">
 <label><input id="recurring" type="checkbox" style="width:auto;margin-right:7px">Marcar como gasto/ingreso recurrente</label>
@@ -62,16 +62,24 @@ body.dark .bar{background:#30384d}
 <div class="modal" id="settings"><div class="sheet"><div class="row"><h2 style="margin:0">Presupuestos</h2><button onclick="closeSettings()" style="border:0;background:none;font-size:24px">×</button></div><div id="settingsList"></div><div class="actions"><button class="primary" onclick="saveBudgets()">Guardar presupuestos</button></div></div></div>
 
 <script>
-const cats=["Restaurantes","Alimentación","Vivienda","Coche","Transporte","Compras","Ocio","Viajes","Hijo","Salud","Suscripciones","Otros"];
+
+const CATS=["Restaurantes","Alimentación","Vivienda","Coche","Transporte","Compras","Ropa","Ocio","Viajes","Hijo","Salud","Suscripciones","Hogar","Tecnología","Deporte","Educación","Otros"];
+const cats=CATS;
+const INCOME_TYPES=["Nómina Breno","Nómina María","Ayuda maternidad","Otros ingresos"];
+const CONCEPTS=["Nómina Breno","Nómina María","Ayuda maternidad","Hipoteca","Comunidad","Agua","Luz","Gas","Seguro hogar","Seguro vida Breno","Seguro vida María","Seguro salud","Seguro coche","Seguro decesos","Movistar","Piscina Luca","Spotify","Netflix","iCloud","Insparya","Guardería","Claude + Chat GPT","Ahorros Breno","Ahorros María","Abono transporte Breno","Supermercado","Gasolina","Salidas / Ocio","Primor","Gimnasio","Coche","Aparcamiento Trabajo María","Alarma","iPhone Breno","Ahorros Luca","Peluquería Breno y Luca","Imprevistos"];
 const colors=["#111827","#475467","#667085","#98a2b3","#d0d5dd","#e4e7ec"];
 let txs=JSON.parse(localStorage.getItem("mf_txs")||"[]");
 let budgets=JSON.parse(localStorage.getItem("mf_budgets")||"{}");
 const euro=n=>new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR"}).format(n);
-const currentYM=()=>new Date().toISOString().slice(0,7);
+const localDate=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
+const currentYM=()=>localDate().slice(0,7);
 document.getElementById("month").textContent=new Date().toLocaleDateString("es-ES",{month:"long",year:"numeric"});
 document.getElementById("category").innerHTML=cats.map(x=>`<option>${x}</option>`).join("");
-document.getElementById("date").value=new Date().toISOString().slice(0,10);
+const conceptList=document.getElementById("conceptList");
+conceptList.innerHTML=CONCEPTS.map(x=>`<option value="${x}"></option>`).join("");
+document.getElementById("date").value=localDate();
 applyTheme();
+initCloud();
 
 function applyTheme(){
  const dark=localStorage.getItem("mf_dark")==="1";
@@ -82,6 +90,10 @@ function applyTheme(){
 function toggleDark(){
  localStorage.setItem("mf_dark",localStorage.getItem("mf_dark")==="1"?"0":"1");
  applyTheme();
+}
+function updateCategories(){
+ const list=type.value==="income"?INCOME_TYPES:cats;
+ cat.innerHTML=list.map(x=>`<option>${x}</option>`).join("");
 }
 function render(){
  const m=currentYM(), mt=txs.filter(t=>t.date.slice(0,7)===m);
@@ -97,7 +109,7 @@ function render(){
 }
 function txHTML(t){return `<div class="tx"><div class="row"><div><div class="txname">${esc(t.concept)}${t.recurring?" 🔁":""}</div><div class="txsub">${t.category} · ${new Date(t.date+"T12:00").toLocaleDateString("es-ES")}</div></div><div style="text-align:right"><b class="${t.type==="income"?"green":"red"}">${t.type==="income"?"+":"−"}${euro(t.amount)}</b><br><button onclick="deleteTx(${t.id})" style="margin-top:6px;border:0;background:#fee4e2;color:#b42318;border-radius:8px;padding:5px 8px;font-size:12px">Borrar</button></div></div></div>`}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-function openModal(){date.value=new Date().toISOString().slice(0,10);modal.classList.add("open");amount.focus()}function closeModal(){modal.classList.remove("open")}
+function openModal(){date.value=localDate();modal.classList.add("open");amount.focus()}function closeModal(){modal.classList.remove("open")}
 function saveTx(){let a=parseFloat(amount.value),c=concept.value.trim();if(!a||!c){alert("Introduce importe y concepto.");return}txs.push({id:Date.now(),type:type.value,amount:a,concept:c,category:category.value,date:date.value,recurring:recurring.checked});localStorage.setItem("mf_txs",JSON.stringify(txs));amount.value="";concept.value="";recurring.checked=false;closeModal();render()}
 function deleteTx(id){
  const t=txs.find(x=>x.id===id);
