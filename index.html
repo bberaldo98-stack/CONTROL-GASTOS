@@ -210,44 +210,108 @@ function addConceptIfNeeded(){
   return n;
 }
 
-function seedSeptember(){
-  if(localStorage.getItem("mf_seed_2026_09")==="1")return;
-  if(txs.length>0){localStorage.setItem("mf_seed_2026_09","1");return;}
-  DEFAULT_SEPTEMBER.forEach(x=>txs.push({
-    id:Date.now()+Math.random(),type:x[4]||"expense",amount:x[1],concept:x[0],category:x[2],date:x[3],recurring:true,templateId:"seed-"+x[0]
-  }));
-  localStorage.setItem("mf_txs",JSON.stringify(txs));
-  localStorage.setItem("mf_seed_2026_09","1");
+function txSignature(t){
+  return [t.type,t.concept,t.amount,t.category,t.date].join("|");
 }
-function buildTemplates(){
+function monthSignature(t){
+  return [t.type,t.concept,Number(t.amount).toFixed(2),t.category].join("|");
+}
+
+// Datos exactos de septiembre de 2026 según la versión que ya tenías.
+// Se usan como referencia para evitar duplicados al actualizar la aplicación.
+const SEPTEMBER_TARGET=DEFAULT_SEPTEMBER.map(x=>({
+  type:x[4]||"expense", amount:Number(x[1]), concept:x[0], category:x[2], date:x[3], recurring:true
+}));
+
+function dedupeTransactions(){
   const seen=new Set();
-  txs.filter(t=>t.recurring).forEach(t=>{
-    const key=t.concept+"|"+t.amount+"|"+t.category+"|"+t.type;
-    if(seen.has(key))return;seen.add(key);
-    recurringTemplates.push({id:"tpl-"+key.replace(/[^a-z0-9]/gi,"")+"-"+Math.random(),concept:t.concept,amount:t.amount,category:t.category,type:t.type,day:1});
-  });
-  localStorage.setItem("mf_recurring",JSON.stringify(recurringTemplates));
-}
-function ensureRecurringForMonth(){
-  const ym=currentYM();
-  const already=new Set(txs.filter(t=>t.date.slice(0,7)===ym).map(t=>t.recurringId||""));
+  const out=[];
   let changed=false;
-  recurringTemplates.forEach(r=>{
-    const rid=r.id+"-"+ym;
-    if(already.has(rid))return;
-    const exists=txs.some(t=>t.recurringId===rid);
-    if(exists)return;
-    txs.push({id:Date.now()+Math.random(),type:r.type,amount:r.amount,concept:r.concept,category:r.category,date:`${ym}-01`,recurring:true,recurringId:rid});
-    changed=true;
-  });
+  // Conservamos el primer movimiento de cada combinación exacta.
+  for(const t of txs){
+    const sig=txSignature(t);
+    if(seen.has(sig)){changed=true;continue;}
+    seen.add(sig);out.push(t);
+  }
+  txs=out;
   if(changed)localStorage.setItem("mf_txs",JSON.stringify(txs));
 }
+
+function reconcileSeptember(){
+  // La pantalla de septiembre debe coincidir con los importes que ya estaban rellenados.
+  // No añadimos una segunda copia si el usuario ya tiene el movimiento.
+  const ym="2026-09";
+  const targetByKey=new Map(SEPTEMBER_TARGET.map(t=>[monthSignature(t),t]));
+  const september=txs.filter(t=>t.date?.slice(0,7)===ym);
+  const existingKeys=new Set(september.map(monthSignature));
+  let changed=false;
+
+  // Si la migración anterior dejó duplicados, solo queda uno por concepto/tipo/importe/categoría.
+  const keep=new Set();
+  txs=txs.filter(t=>{
+    if(t.date?.slice(0,7)!==ym)return true;
+    const key=monthSignature(t);
+    if(keep.has(key)){changed=true;return false;}
+    keep.add(key);return true;
+  });
+
+  // Completa únicamente los conceptos que falten del conjunto que aparece en las fotos.
+  for(const target of SEPTEMBER_TARGET){
+    const key=monthSignature(target);
+    if(!txs.some(t=>t.date?.slice(0,7)===ym && monthSignature(t)===key)){
+      txs.push({id:"seed-"+key.replace(/[^a-z0-9]/gi,"-")+"-202609",...target});
+      changed=true;
+    }
+  }
+  if(changed)localStorage.setItem("mf_txs",JSON.stringify(txs));
+}
+
+function seedSeptember(){
+  // Migramos la base inicial solo si septiembre está vacío. Después, reconcileSeptember()
+  // se encarga de completar lo que falte sin duplicar nada.
+  if(txs.some(t=>t.date?.slice(0,7)==="2026-09"))return;
+  DEFAULT_SEPTEMBER.forEach(x=>txs.push({
+    id:"seed-"+x[0]+"-202609",type:x[4]||"expense",amount:x[1],concept:x[0],category:x[2],date:x[3],recurring:true
+  }));
+  localStorage.setItem("mf_txs",JSON.stringify(txs));
+}
+
+function buildTemplates(){
+  const map=new Map();
+  // Las transacciones recurrentes existentes se convierten en plantillas únicas.
+  for(const t of txs.filter(t=>t.recurring)){
+    const key=[t.type,t.concept,Number(t.amount).toFixed(2),t.category].join("|");
+    if(!map.has(key)) map.set(key,{id:"tpl-"+btoa(unescape(encodeURIComponent(key))).replace(/[^a-z0-9]/gi,"").slice(0,30),key,concept:t.concept,amount:Number(t.amount),category:t.category,type:t.type,day:1});
+  }
+  // Conserva también plantillas creadas manualmente en versiones anteriores.
+  for(const r of recurringTemplates){
+    const key=r.key||[r.type,r.concept,Number(r.amount).toFixed(2),r.category].join("|");
+    if(!map.has(key))map.set(key,{...r,key});
+  }
+  recurringTemplates=[...map.values()];
+  localStorage.setItem("mf_recurring",JSON.stringify(recurringTemplates));
+}
+
+function ensureRecurringForMonth(){
+  const ym=currentYM();
+  let changed=false;
+  const monthKeys=new Set(txs.filter(t=>t.date?.slice(0,7)===ym).map(t=>monthSignature(t)));
+  for(const r of recurringTemplates){
+    const key=[r.type,r.concept,Number(r.amount).toFixed(2),r.category].join("|");
+    if(monthKeys.has(key))continue;
+    const day=Math.min(Math.max(Number(r.day)||1,1),28);
+    txs.push({id:"rec-"+ym+"-"+r.id, type:r.type, amount:Number(r.amount), concept:r.concept, category:r.category, date:`${ym}-${String(day).padStart(2,"0")}`, recurring:true, recurringId:r.id+"-"+ym});
+    monthKeys.add(key);changed=true;
+  }
+  if(changed)localStorage.setItem("mf_txs",JSON.stringify(txs));
+}
+
 function migrateRecurringDates(){
-  // Los movimientos iniciales de septiembre se consideran recurrentes y, desde octubre,
-  // se generan automáticamente el día 1. No se modifica el histórico de septiembre.
-  if(localStorage.getItem("mf_recurring_migrated")==="1")return;
+  dedupeTransactions();
+  reconcileSeptember();
   buildTemplates();
-  localStorage.setItem("mf_recurring_migrated","1");
+  ensureRecurringForMonth();
+  localStorage.setItem("mf_recurring_migrated","3");
 }
 
 function render(){
@@ -287,7 +351,6 @@ function saveBudgets(){document.querySelectorAll(".bud").forEach(i=>budgets[i.da
 migrateLegacyData();
 seedSeptember();
 migrateRecurringDates();
-ensureRecurringForMonth();
 document.getElementById("month").textContent=new Date().toLocaleDateString("es-ES",{month:"long",year:"numeric"});
 updateConcepts();document.getElementById("date").value=localDate();applyTheme();render();
 </script>
