@@ -53,7 +53,7 @@ body.dark .bar{background:#30384d}
 <div class="modal" id="modal"><div class="sheet"><div class="row"><h2 style="margin:0">Añadir movimiento</h2><button onclick="closeModal()" style="border:0;background:none;font-size:24px">×</button></div>
 <label>Tipo</label><select id="type" onchange="updateCategories()"><option value="expense">Gasto</option><option value="income">Ingreso</option></select>
 <label>Importe (€)</label><input id="amount" type="number" inputmode="decimal" step=".01" placeholder="52">
-<label>Concepto</label><input id="concept" list="conceptList" placeholder="Escribe o selecciona un concepto"><datalist id="conceptList"></datalist>
+<label>Concepto</label><select id="concept"></select>
 <label>Categoría</label><select id="category"></select>
 <label>Fecha</label><input id="date" type="date">
 <label><input id="recurring" type="checkbox" style="width:auto;margin-right:7px">Marcar como gasto/ingreso recurrente</label>
@@ -75,8 +75,7 @@ const localDate=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.ge
 const currentYM=()=>localDate().slice(0,7);
 document.getElementById("month").textContent=new Date().toLocaleDateString("es-ES",{month:"long",year:"numeric"});
 document.getElementById("category").innerHTML=cats.map(x=>`<option>${x}</option>`).join("");
-const conceptList=document.getElementById("conceptList");
-conceptList.innerHTML=CONCEPTS.map(x=>`<option value="${x}"></option>`).join("");
+updateConcepts();
 document.getElementById("date").value=localDate();
 applyTheme();
 initCloud();
@@ -93,7 +92,12 @@ function toggleDark(){
 }
 function updateCategories(){
  const list=type.value==="income"?INCOME_TYPES:cats;
- cat.innerHTML=list.map(x=>`<option>${x}</option>`).join("");
+ category.innerHTML=list.map(x=>`<option>${x}</option>`).join("");
+ updateConcepts();
+}
+function updateConcepts(){
+ const list=type.value==="income"?INCOME_TYPES:CONCEPTS.filter(x=>!INCOME_TYPES.includes(x));
+ concept.innerHTML=list.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("");
 }
 function render(){
  const m=currentYM(), mt=txs.filter(t=>t.date.slice(0,7)===m);
