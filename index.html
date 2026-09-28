@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default"><title>Mis Finanzas</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f6f7fb;color:#101828;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+.app{max-width:760px;margin:auto;padding:env(safe-area-inset-top) 16px calc(92px + env(safe-area-inset-bottom))}
+header{padding:22px 2px 14px;display:flex;justify-content:space-between;align-items:center}h1{font-size:30px;margin:0}.sub{color:#667085;font-size:14px;margin-top:3px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.card,.panel{background:#fff;border-radius:20px;box-shadow:0 3px 16px #1018280b}.card{padding:14px 12px}.small{font-size:12px;color:#667085}.num{font-size:18px;font-weight:750;margin-top:6px}.green{color:#079455}.red{color:#d92d20}
+.panel{margin-top:16px;padding:17px}.panel h2{font-size:18px;margin:0 0 14px}.tabs{display:flex;background:#eef0f4;border-radius:12px;padding:3px;margin-bottom:14px}.tabs button{flex:1;border:0;background:none;padding:9px;border-radius:9px;color:#667085}.tabs .active{background:#fff;color:#101828;font-weight:700}
+.chart{height:190px;display:flex;align-items:center;justify-content:center;position:relative}.donut{width:170px;height:170px;border-radius:50%;background:conic-gradient(#111827 0 28%,#667085 28% 55%,#98a2b3 55% 73%,#d0d5dd 73% 88%,#e4e7ec 88% 100%);position:relative}.donut:after{content:"";position:absolute;inset:38px;background:white;border-radius:50%}.donuttxt{position:absolute;z-index:2;text-align:center;font-weight:750;font-size:17px;top:66px;left:0;right:0}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px}.legend div{display:flex;justify-content:space-between}.dot{width:9px;height:9px;border-radius:50%;display:inline-block;background:#667085;margin-right:6px}
+.budget{margin:10px 0 14px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.bar{height:9px;background:#eaecf0;border-radius:8px;overflow:hidden;margin-top:8px}.fill{height:100%;background:#111827;border-radius:8px}
+.tx{padding:13px 0;border-bottom:1px solid #eef0f4}.tx:last-child{border:0}.txname{font-weight:650}.txsub{font-size:12px;color:#667085;margin-top:3px}
+.fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));border:0;border-radius:999px;background:#111827;color:white;padding:15px 20px;font-weight:750;box-shadow:0 10px 28px #0003}
+.modal{position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;z-index:5}.modal.open{display:flex}.sheet{background:white;width:min(760px,100%);border-radius:25px 25px 0 0;padding:20px 18px calc(25px + env(safe-area-inset-bottom))}
+label{font-size:13px;font-weight:650;display:block;margin-top:7px}input,select{width:100%;padding:13px;margin:6px 0 10px;border:1px solid #d0d5dd;border-radius:12px;background:white}.actions{display:flex;gap:9px}.actions button{flex:1;padding:13px;border:0;border-radius:12px;font-weight:700}.primary{background:#111827;color:#fff}.secondary{background:#eaecf0}
+.settings{border:0;background:none;font-size:20px}.empty{text-align:center;color:#667085;padding:15px}
+</style></head><body><div class="app">
+<header><div><h1>Mis Finanzas</h1><div class="sub" id="month"></div></div><button class="settings" onclick="openSettings()">⚙️</button></header>
+<div class="grid"><div class="card"><div class="small">Ingresos</div><div id="income" class="num green">0 €</div></div><div class="card"><div class="small">Gastos</div><div id="expense" class="num red">0 €</div></div><div class="card"><div class="small">Ahorro</div><div id="saving" class="num">0 €</div></div></div>
+
+<div class="panel"><div class="tabs"><button id="t1" class="active" onclick="showTab('month')">Este mes</button><button id="t2" onclick="showTab('history')">Historial</button></div>
+<div id="monthTab"><h2>Distribución de gastos</h2><div class="chart"><div class="donut"><div class="donuttxt" id="donutTotal">0 €</div></div></div><div class="legend" id="legend"></div></div>
+<div id="historyTab" style="display:none"><h2>Últimos movimientos</h2><div id="history"></div></div></div>
+
+<div class="panel"><h2>Presupuestos</h2><div id="budgets"></div></div>
+<div class="panel"><h2>Movimientos de este mes</h2><div id="transactions"></div></div>
+</div>
+<button class="fab" onclick="openModal()">＋ Añadir movimiento</button>
+
+<div class="modal" id="modal"><div class="sheet"><div class="row"><h2 style="margin:0">Añadir movimiento</h2><button onclick="closeModal()" style="border:0;background:none;font-size:24px">×</button></div>
+<label>Tipo</label><select id="type"><option value="expense">Gasto</option><option value="income">Ingreso</option></select>
+<label>Importe (€)</label><input id="amount" type="number" inputmode="decimal" step=".01" placeholder="52">
+<label>Concepto</label><input id="concept" placeholder="Restaurante">
+<label>Categoría</label><select id="category"></select>
+<label>Fecha</label><input id="date" type="date">
+<label><input id="recurring" type="checkbox" style="width:auto;margin-right:7px">Marcar como gasto/ingreso recurrente</label>
+<div class="actions"><button class="secondary" onclick="closeModal()">Cancelar</button><button class="primary" onclick="saveTx()">Guardar</button></div></div></div>
+
+<div class="modal" id="settings"><div class="sheet"><div class="row"><h2 style="margin:0">Presupuestos</h2><button onclick="closeSettings()" style="border:0;background:none;font-size:24px">×</button></div><div id="settingsList"></div><div class="actions"><button class="primary" onclick="saveBudgets()">Guardar presupuestos</button></div></div></div>
+
+<script>
+const cats=["Restaurantes","Alimentación","Vivienda","Coche","Transporte","Compras","Ocio","Viajes","Hijo","Salud","Suscripciones","Otros"];
+const colors=["#111827","#475467","#667085","#98a2b3","#d0d5dd","#e4e7ec"];
+let txs=JSON.parse(localStorage.getItem("mf_txs")||"[]");
+let budgets=JSON.parse(localStorage.getItem("mf_budgets")||"{}");
+const euro=n=>new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR"}).format(n);
+const currentYM=()=>new Date().toISOString().slice(0,7);
+document.getElementById("month").textContent=new Date().toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+document.getElementById("category").innerHTML=cats.map(x=>`<option>${x}</option>`).join("");
+document.getElementById("date").value=new Date().toISOString().slice(0,10);
+
+function render(){
+ const m=currentYM(), mt=txs.filter(t=>t.date.slice(0,7)===m);
+ const inc=mt.filter(t=>t.type==="income").reduce((a,t)=>a+t.amount,0), exp=mt.filter(t=>t.type==="expense").reduce((a,t)=>a+t.amount,0);
+ income.textContent=euro(inc);expense.textContent=euro(exp);saving.textContent=euro(inc-exp);donutTotal.textContent=euro(exp);
+ let sums={};mt.filter(t=>t.type==="expense").forEach(t=>sums[t.category]=(sums[t.category]||0)+t.amount);
+ let entries=Object.entries(sums).sort((a,b)=>b[1]-a[1]), total=exp||1, cum=0, stops=entries.map((e,i)=>{let s=cum/total*100;cum+=e[1];return `${colors[i%colors.length]} ${s}% ${cum/total*100}%`}).join(",");
+ document.querySelector(".donut").style.background=entries.length?`conic-gradient(${stops})`:"conic-gradient(#e4e7ec 0 100%)";
+ legend.innerHTML=entries.map((e,i)=>`<div><span><i class="dot" style="background:${colors[i%colors.length]}"></i>${e[0]}</span><b>${euro(e[1])}</b></div>`).join("")||'<div class="empty">Añade tu primer gasto.</div>';
+ transactions.innerHTML=mt.slice().sort((a,b)=>b.id-a.id).map(t=>txHTML(t)).join("")||'<div class="empty">No hay movimientos.</div>';
+ history.innerHTML=txs.slice().sort((a,b)=>b.id-a.id).slice(0,50).map(t=>txHTML(t)).join("")||'<div class="empty">No hay movimientos.</div>';
+ budgets.innerHTML=cats.map(c=>{let spent=sums[c]||0,b=budgets[c]||0;if(!b)return "";let p=Math.min(100,spent/b*100);return `<div class="budget"><div class="row"><span>${c}</span><span>${euro(spent)} / ${euro(b)}</span></div><div class="bar"><div class="fill" style="width:${p}%"></div></div></div>`}).join("")||'<div class="empty">Configura tus límites desde ⚙️.</div>';
+}
+function txHTML(t){return `<div class="tx"><div class="row"><div><div class="txname">${esc(t.concept)}${t.recurring?" 🔁":""}</div><div class="txsub">${t.category} · ${new Date(t.date+"T12:00").toLocaleDateString("es-ES")}</div></div><b class="${t.type==="income"?"green":"red"}">${t.type==="income"?"+":"−"}${euro(t.amount)}</b></div></div>`}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function openModal(){modal.classList.add("open");amount.focus()}function closeModal(){modal.classList.remove("open")}
+function saveTx(){let a=parseFloat(amount.value),c=concept.value.trim();if(!a||!c){alert("Introduce importe y concepto.");return}txs.push({id:Date.now(),type:type.value,amount:a,concept:c,category:category.value,date:date.value,recurring:recurring.checked});localStorage.setItem("mf_txs",JSON.stringify(txs));amount.value="";concept.value="";recurring.checked=false;closeModal();render()}
+function showTab(x){monthTab.style.display=x==="month"?"block":"none";historyTab.style.display=x==="history"?"block":"none";t1.classList.toggle("active",x==="month");t2.classList.toggle("active",x==="history")}
+function openSettings(){settingsList.innerHTML=cats.map(c=>`<label>${c}<input class="bud" data-cat="${c}" type="number" step="1" inputmode="decimal" value="${budgets[c]||""}" placeholder="Sin límite"></label>`).join("");settings.classList.add("open")}
+function closeSettings(){settings.classList.remove("open")}
+function saveBudgets(){document.querySelectorAll(".bud").forEach(i=>budgets[i.dataset.cat]=parseFloat(i.value)||0);localStorage.setItem("mf_budgets",JSON.stringify(budgets));closeSettings();render()}
+render();
+</script></body></html>
