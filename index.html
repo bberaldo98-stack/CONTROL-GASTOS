@@ -8,9 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Mis Finanzas</title>
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=7">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=7">
-<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png?v=7">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f6f7fb;color:#101828;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
 .app{max-width:760px;margin:auto;padding:env(safe-area-inset-top) 16px calc(105px + env(safe-area-inset-bottom))}
@@ -27,6 +25,9 @@ label{font-size:13px;font-weight:650;display:block;margin-top:7px}input,select{w
 .settings{border:0;background:none;font-size:20px}.empty{text-align:center;color:#667085;padding:15px}.mini{font-size:12px;color:#667085;margin:0 0 10px}.danger{border:0;background:#fee4e2;color:#b42318;border-radius:8px;padding:6px 9px;font-size:12px}
 body.dark{background:#0b1020;color:#f2f4f7}body.dark .card,body.dark .panel,body.dark .sheet{background:#151b2e}body.dark .sub,body.dark .small,body.dark .txsub,body.dark .empty,.dark .mini{color:#98a2b3}body.dark .tx{border-color:#252d43}body.dark input,body.dark select{background:#10172a;color:#f2f4f7;border-color:#30384d}body.dark .tabs{background:#20283c}body.dark .tabs button{color:#98a2b3}body.dark .tabs .active{background:#151b2e;color:#f2f4f7}body.dark .donut:after{background:#151b2e}body.dark .secondary{background:#252d43;color:#f2f4f7}body.dark .settings{color:#f2f4f7}body.dark .bar{background:#30384d}
 @media(max-width:430px){.grid{gap:7px}.card{padding:12px 9px}.num{font-size:17px}.legend{grid-template-columns:1fr}.chart{height:180px}}
+
+.add-panel{margin-top:16px}.add-panel h2{margin-bottom:6px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}.form-grid>div{min-width:0}.check-label{display:flex;align-items:center;gap:4px;margin:8px 0 14px}.check-label input{margin-top:0}.add-panel .actions{margin-top:4px}.add-panel .primary{width:100%;padding:14px}
+@media(max-width:430px){.form-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -53,23 +54,24 @@ body.dark{background:#0b1020;color:#f2f4f7}body.dark .card,body.dark .panel,body
 </div>
 
 <div class="panel"><h2>Presupuestos</h2><div id="budgets"></div></div>
-<div class="panel"><h2>Movimientos de este mes</h2><div id="transactions"></div></div>
+
+<div class="panel add-panel">
+  <h2>Añadir movimiento</h2>
+  <p class="mini">Añade aquí tus ingresos y gastos. Este formulario queda siempre visible y no es un desplegable.</p>
+  <div class="form-grid">
+    <div><label>Tipo</label><select id="type" onchange="updateConcepts()"><option value="expense">Gasto</option><option value="income">Ingreso</option></select></div>
+    <div><label>Importe (€)</label><input id="amount" type="number" inputmode="decimal" step=".01" placeholder="52"></div>
+    <div><label>Concepto</label><select id="concept"></select></div>
+    <div><label id="newConceptLabel" style="display:none">Nuevo concepto</label><input id="newConcept" style="display:none" placeholder="Escribe el nuevo concepto"></div>
+    <div><label>Categoría</label><select id="category"></select></div>
+    <div><label>Fecha</label><input id="date" type="date"></div>
+  </div>
+  <label class="check-label"><input id="recurring" type="checkbox" style="margin-right:7px">Marcar como recurrente (se generará automáticamente cada mes)</label>
+  <div class="actions"><button class="primary" onclick="saveTx()">＋ Guardar movimiento</button></div>
 </div>
 
-<button class="fab" onclick="openModal()">＋ Añadir movimiento</button>
-
-<div class="modal" id="modal"><div class="sheet">
-  <div class="row"><h2 style="margin:0">Añadir movimiento</h2><button onclick="closeModal()" style="border:0;background:none;font-size:24px">×</button></div>
-  <label>Tipo</label><select id="type" onchange="updateConcepts()"><option value="expense">Gasto</option><option value="income">Ingreso</option></select>
-  <label>Importe (€)</label><input id="amount" type="number" inputmode="decimal" step=".01" placeholder="52">
-  <label>Concepto</label><select id="concept"></select>
-  <label id="newConceptLabel" style="display:none">Nuevo concepto</label>
-  <input id="newConcept" style="display:none" placeholder="Escribe el nuevo concepto">
-  <label>Categoría</label><select id="category"></select>
-  <label>Fecha</label><input id="date" type="date">
-  <label><input id="recurring" type="checkbox" style="margin-right:7px">Marcar como recurrente (se generará el día 1 de cada mes)</label>
-  <div class="actions"><button class="secondary" onclick="closeModal()">Cancelar</button><button class="primary" onclick="saveTx()">Guardar</button></div>
-</div></div>
+<div class="panel"><h2>Movimientos de este mes</h2><div id="transactions"></div></div>
+</div>
 
 <div class="modal" id="settings"><div class="sheet">
   <div class="row"><h2 style="margin:0">Presupuestos</h2><button onclick="closeSettings()" style="border:0;background:none;font-size:24px">×</button></div>
@@ -126,60 +128,11 @@ const DEFAULT_SEPTEMBER=[
 ["Nómina María",2148.61,"Nóminas","2026-09-01","income"]
 ];
 
-function readJSON(key,fallback){
-  try{const v=localStorage.getItem(key);return v?JSON.parse(v):fallback}catch(e){return fallback}
-}
-let customConcepts=readJSON("mf_custom_concepts",[]);
-let customCategories=readJSON("mf_custom_categories",[]);
-let txs=readJSON("mf_txs",[]);
-let budgets=readJSON("mf_budgets",{});
-let recurringTemplates=readJSON("mf_recurring",[]);
-
-// Migración de datos de versiones anteriores.
-// La versión anterior de la app guardaba todo bajo "misFinanzasV3".
-// Al actualizar la web no se borra nada: se incorporan esos movimientos a la nueva estructura.
-function migrateLegacyData(){
-  const legacy=readJSON("misFinanzasV3",null);
-  if(!legacy || !Array.isArray(legacy.movements)) return;
-
-  const conceptAlias={"Aparcamiento Trabajo Maria":"Aparcamiento Trabajo María"};
-  const signature=t=>`${t.concept}|${t.amount}|${t.category}|${t.type}|${t.date}`;
-  const seen=new Set(txs.map(signature));
-  let changed=false;
-
-  legacy.movements.forEach(m=>{
-    const rawAmount=Number(m.amount)||0;
-    const concept=conceptAlias[m.concept]||m.concept;
-    const type=rawAmount>=0?"income":"expense";
-    const tx={
-      id:m.id||Date.now()+Math.random(),
-      type,
-      amount:Math.abs(rawAmount),
-      concept,
-      category:m.category||"Imprevistos",
-      date:m.date||localDate(),
-      recurring:!!m.recurring
-    };
-    const sig=signature(tx);
-    if(!seen.has(sig)){txs.push(tx);seen.add(sig);changed=true}
-  });
-
-  if(legacy.concepts?.length){
-    legacy.concepts.forEach(c=>{if(!CONCEPTS.includes(c)&&!customConcepts.includes(c)){customConcepts.push(c);changed=true}})
-  }
-  if(legacy.categories?.length){
-    legacy.categories.forEach(c=>{if(!CATEGORIES.includes(c)&&!customCategories.includes(c)){customCategories.push(c);changed=true}})
-  }
-  if(legacy.budgets && typeof legacy.budgets==="object") budgets={...legacy.budgets,...budgets};
-
-  if(changed){
-    localStorage.setItem("mf_txs",JSON.stringify(txs));
-    localStorage.setItem("mf_custom_concepts",JSON.stringify(customConcepts));
-    localStorage.setItem("mf_custom_categories",JSON.stringify(customCategories));
-    localStorage.setItem("mf_budgets",JSON.stringify(budgets));
-  }
-  localStorage.setItem("mf_legacy_migrated_v3","1");
-}
+let customConcepts=JSON.parse(localStorage.getItem("mf_custom_concepts")||"[]");
+let customCategories=JSON.parse(localStorage.getItem("mf_custom_categories")||"[]");
+let txs=JSON.parse(localStorage.getItem("mf_txs")||"[]");
+let budgets=JSON.parse(localStorage.getItem("mf_budgets")||"{}");
+let recurringTemplates=JSON.parse(localStorage.getItem("mf_recurring")||"[]");
 
 const euro=n=>new Intl.NumberFormat("es-ES",{style:"currency",currency:"EUR"}).format(n);
 const localDate=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
@@ -210,108 +163,44 @@ function addConceptIfNeeded(){
   return n;
 }
 
-function txSignature(t){
-  return [t.type,t.concept,t.amount,t.category,t.date].join("|");
-}
-function monthSignature(t){
-  return [t.type,t.concept,Number(t.amount).toFixed(2),t.category].join("|");
-}
-
-// Datos exactos de septiembre de 2026 según la versión que ya tenías.
-// Se usan como referencia para evitar duplicados al actualizar la aplicación.
-const SEPTEMBER_TARGET=DEFAULT_SEPTEMBER.map(x=>({
-  type:x[4]||"expense", amount:Number(x[1]), concept:x[0], category:x[2], date:x[3], recurring:true
-}));
-
-function dedupeTransactions(){
-  const seen=new Set();
-  const out=[];
-  let changed=false;
-  // Conservamos el primer movimiento de cada combinación exacta.
-  for(const t of txs){
-    const sig=txSignature(t);
-    if(seen.has(sig)){changed=true;continue;}
-    seen.add(sig);out.push(t);
-  }
-  txs=out;
-  if(changed)localStorage.setItem("mf_txs",JSON.stringify(txs));
-}
-
-function reconcileSeptember(){
-  // La pantalla de septiembre debe coincidir con los importes que ya estaban rellenados.
-  // No añadimos una segunda copia si el usuario ya tiene el movimiento.
-  const ym="2026-09";
-  const targetByKey=new Map(SEPTEMBER_TARGET.map(t=>[monthSignature(t),t]));
-  const september=txs.filter(t=>t.date?.slice(0,7)===ym);
-  const existingKeys=new Set(september.map(monthSignature));
-  let changed=false;
-
-  // Si la migración anterior dejó duplicados, solo queda uno por concepto/tipo/importe/categoría.
-  const keep=new Set();
-  txs=txs.filter(t=>{
-    if(t.date?.slice(0,7)!==ym)return true;
-    const key=monthSignature(t);
-    if(keep.has(key)){changed=true;return false;}
-    keep.add(key);return true;
-  });
-
-  // Completa únicamente los conceptos que falten del conjunto que aparece en las fotos.
-  for(const target of SEPTEMBER_TARGET){
-    const key=monthSignature(target);
-    if(!txs.some(t=>t.date?.slice(0,7)===ym && monthSignature(t)===key)){
-      txs.push({id:"seed-"+key.replace(/[^a-z0-9]/gi,"-")+"-202609",...target});
-      changed=true;
-    }
-  }
-  if(changed)localStorage.setItem("mf_txs",JSON.stringify(txs));
-}
-
 function seedSeptember(){
-  // Migramos la base inicial solo si septiembre está vacío. Después, reconcileSeptember()
-  // se encarga de completar lo que falte sin duplicar nada.
-  if(txs.some(t=>t.date?.slice(0,7)==="2026-09"))return;
+  if(localStorage.getItem("mf_seed_2026_09")==="1")return;
+  if(txs.length>0){localStorage.setItem("mf_seed_2026_09","1");return;}
   DEFAULT_SEPTEMBER.forEach(x=>txs.push({
-    id:"seed-"+x[0]+"-202609",type:x[4]||"expense",amount:x[1],concept:x[0],category:x[2],date:x[3],recurring:true
+    id:Date.now()+Math.random(),type:x[4]||"expense",amount:x[1],concept:x[0],category:x[2],date:x[3],recurring:true,templateId:"seed-"+x[0]
   }));
   localStorage.setItem("mf_txs",JSON.stringify(txs));
+  localStorage.setItem("mf_seed_2026_09","1");
 }
-
 function buildTemplates(){
-  const map=new Map();
-  // Las transacciones recurrentes existentes se convierten en plantillas únicas.
-  for(const t of txs.filter(t=>t.recurring)){
-    const key=[t.type,t.concept,Number(t.amount).toFixed(2),t.category].join("|");
-    if(!map.has(key)) map.set(key,{id:"tpl-"+btoa(unescape(encodeURIComponent(key))).replace(/[^a-z0-9]/gi,"").slice(0,30),key,concept:t.concept,amount:Number(t.amount),category:t.category,type:t.type,day:1});
-  }
-  // Conserva también plantillas creadas manualmente en versiones anteriores.
-  for(const r of recurringTemplates){
-    const key=r.key||[r.type,r.concept,Number(r.amount).toFixed(2),r.category].join("|");
-    if(!map.has(key))map.set(key,{...r,key});
-  }
-  recurringTemplates=[...map.values()];
+  const seen=new Set();
+  txs.filter(t=>t.recurring).forEach(t=>{
+    const key=t.concept+"|"+t.amount+"|"+t.category+"|"+t.type;
+    if(seen.has(key))return;seen.add(key);
+    recurringTemplates.push({id:"tpl-"+key.replace(/[^a-z0-9]/gi,"")+"-"+Math.random(),concept:t.concept,amount:t.amount,category:t.category,type:t.type,day:1});
+  });
   localStorage.setItem("mf_recurring",JSON.stringify(recurringTemplates));
 }
-
 function ensureRecurringForMonth(){
   const ym=currentYM();
+  const already=new Set(txs.filter(t=>t.date.slice(0,7)===ym).map(t=>t.recurringId||""));
   let changed=false;
-  const monthKeys=new Set(txs.filter(t=>t.date?.slice(0,7)===ym).map(t=>monthSignature(t)));
-  for(const r of recurringTemplates){
-    const key=[r.type,r.concept,Number(r.amount).toFixed(2),r.category].join("|");
-    if(monthKeys.has(key))continue;
-    const day=Math.min(Math.max(Number(r.day)||1,1),28);
-    txs.push({id:"rec-"+ym+"-"+r.id, type:r.type, amount:Number(r.amount), concept:r.concept, category:r.category, date:`${ym}-${String(day).padStart(2,"0")}`, recurring:true, recurringId:r.id+"-"+ym});
-    monthKeys.add(key);changed=true;
-  }
+  recurringTemplates.forEach(r=>{
+    const rid=r.id+"-"+ym;
+    if(already.has(rid))return;
+    const exists=txs.some(t=>t.recurringId===rid);
+    if(exists)return;
+    txs.push({id:Date.now()+Math.random(),type:r.type,amount:r.amount,concept:r.concept,category:r.category,date:`${ym}-01`,recurring:true,recurringId:rid});
+    changed=true;
+  });
   if(changed)localStorage.setItem("mf_txs",JSON.stringify(txs));
 }
-
 function migrateRecurringDates(){
-  dedupeTransactions();
-  reconcileSeptember();
+  // Los movimientos iniciales de septiembre se consideran recurrentes y, desde octubre,
+  // se generan automáticamente el día 1. No se modifica el histórico de septiembre.
+  if(localStorage.getItem("mf_recurring_migrated")==="1")return;
   buildTemplates();
-  ensureRecurringForMonth();
-  localStorage.setItem("mf_recurring_migrated","3");
+  localStorage.setItem("mf_recurring_migrated","1");
 }
 
 function render(){
@@ -329,8 +218,8 @@ function render(){
   budgets.innerHTML=allCategories().map(c=>{let spent=sums[c]||0,b=budgets[c]||0;if(!b)return "";let p=Math.min(100,spent/b*100);return `<div class="budget"><div class="row"><span>${esc(c)}</span><span>${euro(spent)} / ${euro(b)}</span></div><div class="bar"><div class="fill" style="width:${p}%"></div></div></div>`}).join("")||'<div class="empty">Configura tus límites desde ⚙️.</div>';
 }
 function txHTML(t){return `<div class="tx"><div class="row"><div><div class="txname">${esc(t.concept)}${t.recurring?" 🔁":""}</div><div class="txsub">${esc(t.category)} · ${new Date(t.date+"T12:00").toLocaleDateString("es-ES")}</div></div><div style="text-align:right"><b class="${t.type==="income"?"green":"red"}">${t.type==="income"?"+":"−"}${euro(t.amount)}</b><br><button class="danger" onclick="deleteTx('${t.id}')">Borrar</button></div></div></div>`}
-function openModal(){date.value=localDate();newConcept.value="";newConcept.style.display="none";newConceptLabel.style.display="none";modal.classList.add("open");setTimeout(()=>amount.focus(),50)}
-function closeModal(){modal.classList.remove("open")}
+function openModal(){date.value=localDate();newConcept.value="";newConcept.style.display="none";newConceptLabel.style.display="none";amount.focus()}
+function closeModal(){}
 function saveTx(){
   const a=parseFloat(amount.value);const c=addConceptIfNeeded();
   if(!a||!c){if(!c)return;alert("Introduce un importe.");return}
@@ -340,7 +229,7 @@ function saveTx(){
     const key=tx.concept+"|"+tx.amount+"|"+tx.category+"|"+tx.type;
     if(!recurringTemplates.some(r=>r.key===key)){recurringTemplates.push({id:"tpl-"+Date.now(),key,concept:tx.concept,amount:tx.amount,category:tx.category,type:tx.type,day:1});localStorage.setItem("mf_recurring",JSON.stringify(recurringTemplates))}
   }
-  localStorage.setItem("mf_txs",JSON.stringify(txs));amount.value="";recurring.checked=false;closeModal();render();
+  localStorage.setItem("mf_txs",JSON.stringify(txs));amount.value="";recurring.checked=false;render();
 }
 function deleteTx(id){const t=txs.find(x=>String(x.id)===String(id));if(!t)return;if(confirm(`¿Borrar "${t.concept}" por ${euro(t.amount)}?`)){txs=txs.filter(x=>String(x.id)!==String(id));localStorage.setItem("mf_txs",JSON.stringify(txs));render()}}
 function showTab(x){monthTab.style.display=x==="month"?"block":"none";historyTab.style.display=x==="history"?"block":"none";t1.classList.toggle("active",x==="month");t2.classList.toggle("active",x==="history")}
@@ -348,9 +237,11 @@ function openSettings(){settingsList.innerHTML=allCategories().map(c=>`<label>${
 function closeSettings(){settings.classList.remove("open")}
 function saveBudgets(){document.querySelectorAll(".bud").forEach(i=>budgets[i.dataset.cat]=parseFloat(i.value)||0);localStorage.setItem("mf_budgets",JSON.stringify(budgets));closeSettings();render()}
 
-migrateLegacyData();
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
+
 seedSeptember();
 migrateRecurringDates();
+ensureRecurringForMonth();
 document.getElementById("month").textContent=new Date().toLocaleDateString("es-ES",{month:"long",year:"numeric"});
 updateConcepts();document.getElementById("date").value=localDate();applyTheme();render();
 </script>
