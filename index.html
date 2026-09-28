@@ -87,12 +87,12 @@ const CONCEPTS=[
 "Movistar","Piscina Luca","Spotify","Netflix","iCloud","Insparya","Guardería","Claude + Chat GPT",
 "Ahorros Breno","Ahorros María","Abono transporte Breno","Supermercado","Gasolina","Salidas / Ocio",
 "Primor","Gimnasio","Coche","Aparcamiento Trabajo María","Alarma","iPhone Breno","Ahorros Luca",
-"Peluquería Breno y Luca","Imprevistos"
+"Peluquería","Imprevistos"
 ];
 const CATEGORIES=["Hipoteca","Comunidad","Suministros","Seguros","Teléfono","Suscripciones","Financiación","Guardería","Matronatación","Ahorros","Transporte","Supermercado","Ocio","Gimnasio","Nóminas","Ayuda maternidad"];
 const INCOME_CONCEPTS=["Nómina Breno","Nómina María","Ayuda maternidad"];
 const DEFAULT_SEPTEMBER=[
-["Peluquería Breno y Luca",55,"Peluquería Breno y Luca","2026-09-01"],
+["Peluquería Breno y Luca",55,"Peluquería","2026-09-01"],
 ["Ahorros Luca",50,"Ahorros","2026-09-01"],
 ["iPhone Breno",20.99,"Financiación","2026-09-01"],
 ["Alarma",51.64,"Suministros","2026-09-01"],
@@ -163,9 +163,31 @@ function addConceptIfNeeded(){
   return n;
 }
 
+function transactionKey(t){
+  return [t.type,t.amount,t.concept,t.category,t.date].join("|");
+}
+function dedupeTransactions(){
+  const seen=new Set();
+  const clean=[];
+  // Conserva el primer registro de cada movimiento exactamente igual.
+  // Así, si una versión anterior generó duplicados, no se vuelven a contar.
+  for(const t of txs){
+    const key=transactionKey(t);
+    if(seen.has(key))continue;
+    seen.add(key);clean.push(t);
+  }
+  if(clean.length!==txs.length){
+    txs=clean;
+    localStorage.setItem("mf_txs",JSON.stringify(txs));
+  }
+}
 function seedSeptember(){
   if(localStorage.getItem("mf_seed_2026_09")==="1")return;
-  if(txs.length>0){localStorage.setItem("mf_seed_2026_09","1");return;}
+  if(txs.length>0){
+    dedupeTransactions();
+    localStorage.setItem("mf_seed_2026_09","1");
+    return;
+  }
   DEFAULT_SEPTEMBER.forEach(x=>txs.push({
     id:Date.now()+Math.random(),type:x[4]||"expense",amount:x[1],concept:x[0],category:x[2],date:x[3],recurring:true,templateId:"seed-"+x[0]
   }));
@@ -174,35 +196,56 @@ function seedSeptember(){
 }
 function buildTemplates(){
   const seen=new Set();
+  const templates=[];
   txs.filter(t=>t.recurring).forEach(t=>{
     const key=t.concept+"|"+t.amount+"|"+t.category+"|"+t.type;
-    if(seen.has(key))return;seen.add(key);
-    recurringTemplates.push({id:"tpl-"+key.replace(/[^a-z0-9]/gi,"")+"-"+Math.random(),concept:t.concept,amount:t.amount,category:t.category,type:t.type,day:1});
+    if(seen.has(key))return;
+    seen.add(key);
+    templates.push({id:"tpl-"+key.replace(/[^a-z0-9]/gi,"")+"-"+Math.random(),key,concept:t.concept,amount:t.amount,category:t.category,type:t.type,day:1});
   });
+  recurringTemplates=templates;
   localStorage.setItem("mf_recurring",JSON.stringify(recurringTemplates));
 }
 function ensureRecurringForMonth(){
   const ym=currentYM();
-  const already=new Set(txs.filter(t=>t.date.slice(0,7)===ym).map(t=>t.recurringId||""));
   let changed=false;
   recurringTemplates.forEach(r=>{
     const rid=r.id+"-"+ym;
-    if(already.has(rid))return;
-    const exists=txs.some(t=>t.recurringId===rid);
-    if(exists)return;
-    txs.push({id:Date.now()+Math.random(),type:r.type,amount:r.amount,concept:r.concept,category:r.category,date:`${ym}-01`,recurring:true,recurringId:rid});
+    if(txs.some(t=>t.recurringId===rid))return;
+
+    // Si el movimiento de este mes ya existe (por ejemplo el histórico inicial
+    // de septiembre), se reutiliza en vez de crear una segunda copia.
+    const existing=txs.find(t=>
+      t.date.slice(0,7)===ym &&
+      t.type===r.type &&
+      Number(t.amount)===Number(r.amount) &&
+      t.concept===r.concept &&
+      t.category===r.category
+    );
+    if(existing){
+      existing.recurring=true;
+      existing.recurringId=rid;
+      changed=true;
+      return;
+    }
+
+    txs.push({id:Date.now()+Math.random(),type:r.type,amount:r.amount,concept:r.concept,category:r.category,date:`${ym}-${String(r.day||1).padStart(2,"0")}`,recurring:true,recurringId:rid});
     changed=true;
   });
   if(changed)localStorage.setItem("mf_txs",JSON.stringify(txs));
 }
 function migrateRecurringDates(){
-  // Los movimientos iniciales de septiembre se consideran recurrentes y, desde octubre,
-  // se generan automáticamente el día 1. No se modifica el histórico de septiembre.
-  if(localStorage.getItem("mf_recurring_migrated")==="1")return;
+  dedupeTransactions();
+  // Los movimientos iniciales de septiembre se convierten en plantillas
+  // recurrentes y, desde los meses siguientes, se generan automáticamente.
+  if(localStorage.getItem("mf_recurring_migrated")==="1"){
+    // Repara plantillas antiguas que no tenían la propiedad key.
+    if(recurringTemplates.some(r=>!r.key))buildTemplates();
+    return;
+  }
   buildTemplates();
   localStorage.setItem("mf_recurring_migrated","1");
 }
-
 function render(){
   const m=currentYM(),mt=txs.filter(t=>t.date.slice(0,7)===m);
   const inc=mt.filter(t=>t.type==="income").reduce((a,t)=>a+t.amount,0);
@@ -240,8 +283,10 @@ function saveBudgets(){document.querySelectorAll(".bud").forEach(i=>budgets[i.da
 if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));}
 
 seedSeptember();
+dedupeTransactions();
 migrateRecurringDates();
 ensureRecurringForMonth();
+dedupeTransactions();
 document.getElementById("month").textContent=new Date().toLocaleDateString("es-ES",{month:"long",year:"numeric"});
 updateConcepts();document.getElementById("date").value=localDate();applyTheme();render();
 </script>
